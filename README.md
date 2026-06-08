@@ -9,3 +9,6 @@ A collection of setup files for Scramjet, drag-and-drop, easy to use.
 ## Supported Languages
 - React
 - HTML/JS
+
+## Quick Note:
+This repository does not host any Scramjet, Epoxy, Libcurl, or Scramjet Controller files. You will need to install packages yourself and move files around.
