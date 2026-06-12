@@ -106,122 +106,103 @@
     </div>
 
     <script type="importmap">
-        {
-            "imports": {
-                "@mercuryworkshop/scramjet-controller": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet-controller@latest/dist/controller.api.js",
-                "@mercuryworkshop/scramjet": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@latest/dist/scramjet.js",
-                "@mercuryworkshop/epoxy-transport": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@latest/dist/index.js"
-            }
-        }
+    {
+      "imports": {
+        "@mercuryworkshop/scramjet": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@2.0.67-alpha.1/dist/scramjet.js",
+        "@mercuryworkshop/scramjet-controller": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet-controller@0.0.13/dist/controller.api.js",
+        "@mercuryworkshop/epoxy-transport": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@3.0.1/dist/index.js"
+      }
+    }
     </script>
 
     <script type="module">
-        import { defaultConfig } from '@mercuryworkshop/scramjet';
-        import { EpoxyTransport } from '@mercuryworkshop/epoxy-transport';
+        import * as ScramjetModule from "@mercuryworkshop/scramjet";
+        import * as ScramjetControllerModule from "@mercuryworkshop/scramjet-controller";
+        import * as EpoxyModule from "@mercuryworkshop/epoxy-transport";
 
-        const iframe = document.getElementById('browserFrame');
-        const urlInput = document.getElementById('urlInput');
-        const goBtn = document.getElementById('goBtn');
-        const backBtn = document.getElementById('backBtn');
-        const forwardBtn = document.getElementById('forwardBtn');
-        const reloadBtn = document.getElementById('reloadBtn');
-        const statusEl = document.getElementById('status');
+        globalThis.$scramjet = ScramjetModule;
+
+        const Controller =
+            ScramjetControllerModule.Controller ??
+            ScramjetControllerModule.ScramjetController ??
+            Object.values(ScramjetControllerModule).find(v => typeof v === "function");
+
+        const EpoxyTransport =
+                EpoxyModule.default ??
+                EpoxyModule.EpoxyTransport;
+
+        const defaultConfig =
+            ScramjetModule.defaultConfig ??
+            ScramjetModule.scramjetConfig ??
+            ScramjetModule.default?.defaultConfig ??
+            {};
+
+        const iframe = document.getElementById("browserFrame");
+        const urlInput = document.getElementById("urlInput");
+        const statusEl = document.getElementById("status");
 
         let scramjet = null;
-        let currentFrame = null;
-        let currentUrl = 'https://example.com';
+        let frame = null;
 
-        function setStatus(text, isError = false) {
-            statusEl.textContent = text;
-            statusEl.style.color = isError ? '#ff6b6b' : '#aaa';
-            setTimeout(() => {
-                if (statusEl.textContent === text) {
-                    statusEl.style.color = '#aaa';
-                }
-            }, 2000);
+        function setStatus(t, err = false) {
+            statusEl.textContent = t;
+            statusEl.style.color = err ? "#ff6b6b" : "#aaa";
         }
 
-        function navigate(url) {
-            if (!url.trim()) return;
-
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
-            }
-
-            currentUrl = url;
-            urlInput.value = url;
-            setStatus(`Loading ${url}...`);
-
-            if (currentFrame) {
-                currentFrame.go(url);
-            } else if (scramjet && iframe) {
-                currentFrame = scramjet.createFrame(iframe);
-                currentFrame.go(url);
-            }
+        function norm(u) {
+            return u.startsWith("http") ? u : "https://" + u;
         }
 
-        async function initScramjet() {
-            setStatus('Initializing Scramjet...');
-
+        async function init() {
             try {
-                const registration = await navigator.serviceWorker.ready;
-                const serviceworker = navigator.serviceWorker.controller || registration.active;
+                setStatus("Initializing...");
 
-                if (!serviceworker) {
-                    throw new Error('Service worker not ready');
-                }
+                await navigator.serviceWorker.ready;
+
+                const serviceworker =
+                    navigator.serviceWorker.controller ??
+                    (await navigator.serviceWorker.ready).active;
 
                 const transport = new EpoxyTransport({
-                    wisp: 'wss://wisp.mercurywork.shop/wisp/'
+                    wisp: "wss://wisp.mercuryworkshop.shop/wisp/"
                 });
+
                 await transport.init();
 
-                scramjet = new Controller({
+                const scramjet = new Controller({
                     serviceworker,
                     transport,
-                    scramjetConfig: defaultConfig,
+                    scramjetConfig: ScramjetModule.defaultConfig ?? {}
                 });
 
                 await scramjet.wait();
 
-                setStatus('Scramjet ready!');
+                frame = scramjet.createFrame(iframe);
+                frame.go("https://example.com");
 
-                currentFrame = scramjet.createFrame(iframe);
-                currentFrame.go(currentUrl);
-
-            } catch (error) {
-                console.error('Scramjet init error:', error);
-                setStatus(`Error: ${error.message}`, true);
+                setStatus("Ready");
+            } catch (e) {
+                console.error(e);
+                setStatus(e.message, true);
             }
         }
 
-        goBtn.addEventListener('click', () => navigate(urlInput.value));
-        urlInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') navigate(urlInput.value);
+        function go() {
+            const url = norm(urlInput.value);
+            urlInput.value = url;
+            frame?.go(url);
+        }
+
+        document.getElementById("goBtn").onclick = go;
+
+        urlInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") go();
         });
 
-        backBtn.addEventListener('click', () => {
-            if (currentFrame) currentFrame.back();
-        });
-
-        forwardBtn.addEventListener('click', () => {
-            if (currentFrame) currentFrame.forward();
-        });
-
-        reloadBtn.addEventListener('click', () => {
-            if (currentFrame) currentFrame.reload();
-        });
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(() => {
-                console.log('Service worker registered');
-                initScramjet();
-            }).catch(err => {
-                console.error('Service worker registration failed:', err);
-                setStatus('Service worker failed to register', true);
-            });
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/sw.js").then(init);
         } else {
-            setStatus('Service workers not supported', true);
+            setStatus("No service worker support", true);
         }
     </script>
 </body>
