@@ -104,38 +104,27 @@
         </div>
         <iframe id="browserFrame" title="Scramjet Browser"></iframe>
     </div>
+    <!--
+        STEP 1: Load the libraries. Keep these as plain <script> tags. Do not turn
+        them into type="module" / imports. They put their API on the global object
+        (window.$scramjet, window.$scramjetController, window.EpoxyTransport), and
+        that only happens in a classic script.
 
-    <script type="importmap">
-    {
-      "imports": {
-        "@mercuryworkshop/scramjet": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@2.0.67-alpha.1/dist/scramjet.js",
-        "@mercuryworkshop/scramjet-controller": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet-controller@0.0.13/dist/controller.api.js",
-        "@mercuryworkshop/epoxy-transport": "https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@3.0.1/dist/index.js"
-      }
-    }
-    </script>
+        scramjet/ and controller/ need to live at your site root. The service worker
+        loads scramjet.js and scramjet.wasm from /scramjet/ and the inject script
+        from /controller/, so keep those paths unless you also change the controller
+        config.
+    -->
+    <script src="/scramjet/scramjet.js"></script>
+    <script src="/controller/controller.api.js"></script>
+    <!-- Epoxy is the network transport. Drop in a local copy if you don't want the CDN. -->
+    <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@3.0.1/dist/index.js"></script>
 
-    <script type="module">
-        import * as ScramjetModule from "@mercuryworkshop/scramjet";
-        import * as ScramjetControllerModule from "@mercuryworkshop/scramjet-controller";
-        import * as EpoxyModule from "@mercuryworkshop/epoxy-transport";
-
-        globalThis.$scramjet = ScramjetModule;
-
-        const Controller =
-            ScramjetControllerModule.Controller ??
-            ScramjetControllerModule.ScramjetController ??
-            Object.values(ScramjetControllerModule).find(v => typeof v === "function");
-
-        const EpoxyTransport =
-                EpoxyModule.default ??
-                EpoxyModule.EpoxyTransport;
-
-        const defaultConfig =
-            ScramjetModule.defaultConfig ??
-            ScramjetModule.scramjetConfig ??
-            ScramjetModule.default?.defaultConfig ??
-            {};
+    <script>
+        // STEP 2: Pull the classes off the globals the scripts above set up.
+        const { Controller } = $scramjetController;
+        const { defaultConfig } = $scramjet;
+        const EpoxyTransport = self.EpoxyTransport.default;
 
         const iframe = document.getElementById("browserFrame");
         const urlInput = document.getElementById("urlInput");
@@ -157,26 +146,33 @@
             try {
                 setStatus("Initializing...");
 
+                // Wait for the service worker (registered at the bottom) to be active.
                 await navigator.serviceWorker.ready;
 
                 const serviceworker =
                     navigator.serviceWorker.controller ??
                     (await navigator.serviceWorker.ready).active;
 
+                // STEP 3: Connect a transport to a wisp server.
+                // Use your own wisp server in production. Public ones get
+                // rate-limited and can go offline.
                 const transport = new EpoxyTransport({
-                    wisp: "wss://wisp.mercuryworkshop.shop/wisp/"
+                    wisp: "wss://wisp.mercurywork.shop/"
                 });
 
                 await transport.init();
 
-                const scramjet = new Controller({
+                // STEP 4: Create the controller. defaultConfig is fine to start with;
+                // change it if you need custom rewriting behaviour.
+                scramjet = new Controller({
                     serviceworker,
                     transport,
-                    scramjetConfig: ScramjetModule.defaultConfig ?? {}
+                    scramjetConfig: defaultConfig
                 });
 
                 await scramjet.wait();
 
+                // STEP 5: Bind a frame to the <iframe> and navigate it.
                 frame = scramjet.createFrame(iframe);
                 frame.go("https://example.com");
 
@@ -187,6 +183,7 @@
             }
         }
 
+        // Navigate the iframe to whatever is typed in the URL bar.
         function go() {
             const url = norm(urlInput.value);
             urlInput.value = url;
@@ -199,6 +196,8 @@
             if (e.key === "Enter") go();
         });
 
+        // STEP 6: Register the service worker, then boot once it's ready.
+        // Service workers only run in a secure context: https:// or http://localhost.
         if ("serviceWorker" in navigator) {
             navigator.serviceWorker.register("/sw.js").then(init);
         } else {
