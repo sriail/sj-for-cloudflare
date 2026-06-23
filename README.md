@@ -3,6 +3,11 @@
 Ready-to-use setup files for [Scramjet](https://github.com/MercuryWorkshop/scramjet).
 Pick a template, follow its README, and you have a working web proxy.
 
+## Quick Note
+If you're going to use these in your project, please do the following:
+- Attribute MercuryWorkshop for Epoxy, Scramjet, and other MercuryWorkshop packages
+- Attribute me (x8rr) for the Scramjet Templates repo, if you use any templates in this repo
+
 ## Templates
 
 | Template | Path | Notes |
