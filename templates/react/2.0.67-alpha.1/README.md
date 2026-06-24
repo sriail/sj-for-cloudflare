@@ -37,9 +37,11 @@ Notes:
 2. **Put `sw.js` in `public/`** (it's already here). It must end up at your site
    root so its scope covers the whole app.
 
-3. **Register the service worker** in your entry HTML (`index.html`):
+3. **Register the service worker and Scramjet scripts** in your entry HTML (`index.html`):
 
    ```html
+   <script src="/scramjet/scramjet.js"></script>
+   <script src="/controller/controller.api.js"></script>
    <script>
      if ("serviceWorker" in navigator) {
        navigator.serviceWorker.register("/sw.js");
