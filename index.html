@@ -419,11 +419,26 @@
           const EpoxyTransport = self.EpoxyTransport.default;
 
           // Connect a transport to a wisp server.
-          const transport = new EpoxyTransport({
-            wisp: "wss://wisp.mercurywork.shop/"
-          });
+          const wispConfig = window.wispConfig;
+          const sortedRoutes = [...wispConfig.wss_routes].sort((a, b) => a.priority - b.priority);
+            let transport = null;
 
-          await transport.init();
+              for (const route of sortedRoutes) {
+                try {
+                   console.log(`[Wisp] Trying ${route.name} (${route.route})`);
+                    transport = new EpoxyTransport({ wisp: route.route });
+                    await transport.init();
+                    console.log(`[Wisp] Connected to ${route.name}`);
+                      break;
+                  } catch (e) {
+                  console.warn(`[Wisp] ${route.name} failed:`, e.message);
+                transport = null;
+                }
+            }
+
+            if (!transport) {
+             throw new Error('All wisp servers failed');
+          }
 
           // Create the controller.
           scramjet = new Controller({
