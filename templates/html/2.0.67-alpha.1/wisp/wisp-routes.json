@@ -1,0 +1,10 @@
+{
+  "wss_routes": [
+    {
+      "name": "anura-wisp",
+      "route": "wss://anura.pro/",
+      "priority": 1
+    },
+   
+  ]
+}
