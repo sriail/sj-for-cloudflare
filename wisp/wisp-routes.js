@@ -2,18 +2,23 @@
 const currentUrl = new URL(window.location.href);
 const wsProtocol = currentUrl.protocol === 'https:' ? 'wss:' : 'ws:';
 
-export const wispConfig = {
-  "wss_routes": [
+export const wispConfig = { 
+  "wss_routes": [ // feel free to change wss routes, remove non local, or remove local routes, or add alterear indexes
     {
       "name": "local-wisp",
-      "route": `${wsProtocol}//${currentUrl.host}/ws`, // local wisp (only host when a server side present)
+      "route": `${wsProtocol}//${currentUrl.host}/`, // local wisp (only host when a server side present)
       "priority": 0
     },
     {
       "name": "anura-wisp",
-      "route": "wss://anura.pro/", // non-local Wisp (calls for fallback)
+      "route": "wss://anura.pro/", // non-local wisp (calls for fallback)
       "priority": 1
+    },
+    {
+      "name": "mercuryworkshop-wisp",
+      "route": "wss://wisp.mercurywork.shop/", // non-local wisp (calls for fallback)
+      "priority": 2
     }
   ]
 };
-
+// localhost will use ws and not wss, it should not be the deployment defalt with valid ssl
