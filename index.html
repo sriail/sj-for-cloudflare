@@ -6,7 +6,20 @@
     <title>Scramjet</title>
     <style>
       /* --- CSS Variables / Theming --- */
-      :root {
+      :root,
+      [data-theme="light"] {
+        --bg: #f5f5f5;
+        --bg-nav: #ffffff;
+        --bg-card: #ffffff;
+        --text: #1a1a1a;
+        --text-muted: #666;
+        --border: #ddd;
+        --accent: #8a9bb2;
+        --input-bg: #f0f0f0;
+        --btn-hover: #e0e0e0;
+        --settings-bg: #fafafa;
+      }
+      [data-theme="dark"] {
         --bg: #121212;
         --bg-nav: #1e1e1e;
         --bg-card: #252525;
@@ -16,6 +29,7 @@
         --accent: #8a9bb2;
         --input-bg: #2a2a2a;
         --btn-hover: #383838;
+        --settings-bg: #252525;
       }
 
       /* --- Reset & Base --- */
@@ -148,6 +162,59 @@
         height: 100%;
         border: none;
       }
+
+      /* --- Settings Panel --- */
+      #settings-panel {
+        display: none;
+        position: absolute;
+        top: 48px;
+        right: 12px;
+        width: 320px;
+        max-width: calc(100vw - 24px);
+        background: var(--settings-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+        z-index: 999;
+        padding: 20px;
+      }
+      .settings-content h2 {
+        font-size: 18px;
+        margin-bottom: 16px;
+      }
+      .settings-group {
+        margin-bottom: 16px;
+      }
+      .settings-group label {
+        display: block;
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .settings-group select {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--input-bg);
+        color: var(--text);
+        outline: none;
+      }
+      .settings-btn {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--input-bg);
+        color: var(--text);
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .settings-btn:hover {
+        background: var(--btn-hover);
+      }
     </style>
   </head>
   <body>
@@ -184,8 +251,30 @@
             <path d="M4 8V6a2 2 0 0 1 2-2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2-2v-2" />
           </svg>
         </button>
+        <button id="btn-settings" class="nav-btn" title="Settings">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.066 2.573c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.573 1.066c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.066 -2.573c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37.996 .607 2.296 .07 2.573 -1.066z" />
+            <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+          </svg>
+        </button>
       </div>
     </nav>
+
+    <!-- Settings panel (inline) — color mode only -->
+    <div id="settings-panel">
+      <div class="settings-content">
+        <h2>Settings</h2>
+        <div class="settings-group">
+          <label for="theme-select">Theme</label>
+          <select id="theme-select">
+            <option value="system">System (Default)</option>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+        <button id="settings-save" type="button" class="settings-btn">Save</button>
+      </div>
+    </div>
 
     <!-- Homepage content -->
     <div id="home-content">
@@ -198,8 +287,8 @@
             <path d="M 469.2 462.3 c 27.1 -5.6 65.9 -15.9 80.4 14.9 c -0.1 0.4 -0.1 0.7 -0.2 1.1 c -1.3 11.4 46.1 99.5 45.3 119.2 c -0.2 4 -2.2 7.3 -5.2 9.9 c -10.5 9.4 -61.4 14 -65.9 23.5 l 0.1 0.3 c -14 5.5 -30.2 21.4 -36.3 35.2 c -7.8 17.6 -2 39.9 6.6 56.1 c 5.1 21.9 67.2 82.8 85.2 105.3 c 51.3 64.3 71.9 138.5 30.8 213.8 c -4.1 7.7 -8 13.6 -12.8 20.7 c -2.7 4 -18.2 21.9 -18.8 23.9 c -9.8 17 -70.3 56.7 -90.6 66.4 c -44.4 21.2 -103.9 44.9 -154 45.9 c -2.6 0.1 -9.4 -2.2 -12 -3 c -12.9 -15.7 -20.8 -43.6 -28.8 -62.7 c -9.3 -21.8 -18.2 -44.5 -26.1 -66.8 c -1.3 -3.6 -3.1 -12.3 -1.8 -16.4 c 4.1 -7.7 30.2 -11.5 38.6 -13.9 a 138 138 0 0 0 18.1 -6.6 c 28.7 -12.8 48.9 -32 61.3 -60.8 c -8.6 -13.5 -21.5 -23.2 -30.8 -35.3 c -10.7 -14 -25 -34 -33.5 -48.6 c -7.5 -12.9 -36.7 -66.2 -35.4 -79.4 c -1.6 -6.4 -12.8 -21.4 -16.8 -28 c -35.5 -60.4 -42.9 -125 -4.8 -187.5 c 9.6 -11.9 19.2 -24.5 29.8 -35.3 c 34.2 -34.5 79.5 -61.1 125.1 -77 a 413 413 0 0 1 32.6 -9.6 c 6.3 -1.6 13.8 -2.7 19.7 -5.1"/>
             <path d="M 283.6 804.8 c 2.2 1.2 27 28.6 33.4 36.8 c 25.9 32.9 80.5 78.4 66.8 125.7 l -0.5 0.8 c -8.6 -13.5 -21.5 -23.2 -30.8 -35.3 c -10.7 -14 -25 -34 -33.5 -48.6 c -7.5 -12.9 -36.7 -66.2 -35.4 -79.4"/>
             <path d="M 306.4 279.5 c -0.5 -9.3 15.3 -24.6 25 -25 z M 188.2 989.8 c -0.9 -1.6 -0.7 -1.2 -1 -3.1 c 1.9 -4.9 17 -20.5 22 -21.1 l 0.1 3 c -6.7 6.7 -14.8 14.4 -21 21.3"/>
-            </g>
-          </svg>
+          </g>
+        </svg>
         <h1>Scramjet</h1>
         <form id="home-form" autocomplete="off">
           <input id="home-search" type="text" placeholder="Search or enter URL" autofocus />
@@ -212,31 +301,81 @@
       <iframe id="proxy-frame" title="Scramjet Browser"></iframe>
     </div>
 
-    <!--
-      Load the libraries. Keep these as plain <script> tags. Do not turn
-      them into type="module" / imports. They put their API on the global object
-      (window.$scramjet, window.$scramjetController, window.EpoxyTransport), and
-      that only happens in a classic script.
-
-      scramjet/ and controller/ need to live at your site root. The service worker
-      loads scramjet.js and scramjet.wasm from /scramjet/ and the inject script
-      from /controller/, so keep those paths unless you also change the controller
-      config.
-    -->
     <script src="/scramjet/scramjet.js"></script>
     <script src="/controller/controller.api.js"></script>
-    <!-- Epoxy is the network transport. Drop in a local copy if you don't want the CDN. -->
     <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@3.0.1/dist/index.js"></script>
 
     <script>
       "use strict";
 
-      // --- Dynamically set the favicon from the homepage SVG ---
+      // --- Settings Helpers (color mode only) ---
+      function loadSettings() {
+        const defaults = { theme: "system" };
+        try {
+          const saved = JSON.parse(localStorage.getItem("proxy-settings"));
+          return Object.assign(defaults, saved);
+        } catch (e) {
+          return defaults;
+        }
+      }
+
+      function saveSettings(settings) {
+        // Wrapped in try/catch in case localStorage is blocked by browser privacy settings
+        try {
+          localStorage.setItem("proxy-settings", JSON.stringify(settings));
+        } catch (e) {
+          console.error("Could not save settings to localStorage:", e);
+        }
+      }
+
+      function applyTheme(theme) {
+        let resolved = theme;
+        if (theme === "system") {
+          resolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", resolved);
+
+        // Refresh favicon to match resolved theme color
+        updateFavicon();
+
+        // Apply theme to proxy iframe if it exists
+        const frame = document.getElementById("proxy-frame");
+        if (frame) {
+          try {
+            frame.contentDocument.documentElement.setAttribute("data-theme", resolved);
+          } catch (e) {
+            // Cross-origin, ignore
+          }
+        }
+      }
+
+      // --- State ---
+      let settings = loadSettings();
+      let settingsOpen = false;
+      let scramjet = null;
+      let frame = null;
+      let urlMonitorInterval = null;
+      let navbarUrlFocused = false;
+
+      // --- DOM Refs ---
+      const iframe = document.getElementById("proxy-frame");
+      const navbarUrl = document.getElementById("navbar-url");
+      const navbarForm = document.getElementById("navbar-form");
+      const homeForm = document.getElementById("home-form");
+      const homeSearch = document.getElementById("home-search");
+      const homeContent = document.getElementById("home-content");
+      const frameContainer = document.getElementById("frame-container");
+      const navbar = document.getElementById("navbar");
+      const settingsPanel = document.getElementById("settings-panel");
+      const themeSelect = document.getElementById("theme-select");
+      const saveBtn = document.getElementById("settings-save");
+
+      // --- Favicon ---
       const logoSvg = document.querySelector(".home-logo");
-      if (logoSvg) {
-        // Serialize the SVG and replace currentColor with the explicit text hex 
-        // so the standalone favicon retains the correct color.
-        const svgString = new XMLSerializer().serializeToString(logoSvg).replace(/currentColor/g, "#e0e0e0");
+      function updateFavicon() {
+        if (!logoSvg) return;
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "#e0e0e0";
+        const svgString = new XMLSerializer().serializeToString(logoSvg).replace(/currentColor/g, textColor);
         const faviconUrl = "data:image/svg+xml," + encodeURIComponent(svgString);
         let favicon = document.querySelector("link[rel='icon']");
         if (!favicon) {
@@ -248,24 +387,13 @@
         favicon.href = faviconUrl;
       }
 
-      // Pull the classes off the globals the scripts above set up.
-      const { Controller } = $scramjetController;
-      const { defaultConfig } = $scramjet;
-      const EpoxyTransport = self.EpoxyTransport.default;
+      // --- Apply theme on load ---
+      applyTheme(settings.theme);
 
-      const iframe = document.getElementById("proxy-frame");
-      const navbarUrl = document.getElementById("navbar-url");
-      const navbarForm = document.getElementById("navbar-form");
-      const homeForm = document.getElementById("home-form");
-      const homeSearch = document.getElementById("home-search");
-      const homeContent = document.getElementById("home-content");
-      const frameContainer = document.getElementById("frame-container");
-      const navbar = document.getElementById("navbar");
-
-      let scramjet = null;
-      let frame = null;
-      let urlMonitorInterval = null;
-      let navbarUrlFocused = false;
+      // Listen for system theme changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+        if (settings.theme === "system") applyTheme("system");
+      });
 
       function norm(u) {
         u = u.trim();
@@ -285,17 +413,19 @@
             navigator.serviceWorker.controller ??
             (await navigator.serviceWorker.ready).active;
 
+          // Pull the classes off the globals (Moved here to avoid crashing the UI if scripts are missing)
+          const { Controller } = window.$scramjetController;
+          const { defaultConfig } = window.$scramjet;
+          const EpoxyTransport = self.EpoxyTransport.default;
+
           // Connect a transport to a wisp server.
-          // Use your own wisp server in production. Public ones get
-          // rate-limited and can go offline.
           const transport = new EpoxyTransport({
             wisp: "wss://wisp.mercurywork.shop/"
           });
 
           await transport.init();
 
-          // Create the controller. defaultConfig is fine to start with;
-          // change it if you need custom rewriting behaviour.
+          // Create the controller.
           scramjet = new Controller({
             serviceworker,
             transport,
@@ -307,19 +437,26 @@
           // Bind a frame to the <iframe>.
           frame = scramjet.createFrame(iframe);
         } catch (e) {
-          console.error(e);
+          console.error("Failed to initialize Scramjet:", e);
         }
       }
 
       // Navigate the iframe to whatever is typed in the URL bar / search box.
       function go(input) {
-        if (!frame) return;
+        if (!frame) {
+          console.warn("Scramjet frame not initialized yet.");
+          return;
+        }
         const url = norm(input);
         navbarUrl.value = url;
 
         // Show frame, hide home
         homeContent.style.display = "none";
         frameContainer.style.display = "block";
+
+        // Close settings if open
+        settingsPanel.style.display = "none";
+        settingsOpen = false;
 
         frame.go(url);
 
@@ -400,10 +537,29 @@
           urlMonitorInterval = null;
         }
         frameContainer.style.display = "none";
+        settingsPanel.style.display = "none";
+        settingsOpen = false;
         homeContent.style.display = "flex";
         navbarUrl.value = "";
         homeSearch.value = "";
         homeSearch.focus();
+      });
+
+      // Settings logic — color mode only
+      document.getElementById("btn-settings").addEventListener("click", () => {
+        settingsOpen = !settingsOpen;
+        settingsPanel.style.display = settingsOpen ? "block" : "none";
+        if (settingsOpen) {
+          themeSelect.value = settings.theme;
+        }
+      });
+
+      saveBtn.addEventListener("click", () => {
+        settings.theme = themeSelect.value;
+        saveSettings(settings);
+        applyTheme(settings.theme);
+        settingsPanel.style.display = "none";
+        settingsOpen = false;
       });
 
       // Fullscreen logic
@@ -434,7 +590,6 @@
       document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
       // Register the service worker, then boot once it's ready.
-      // Service workers only run in a secure context: https:// or http://localhost.
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/sw.js").then(init);
       }
