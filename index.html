@@ -1,119 +1,219 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Scramjet Browser</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scramjet</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      /* --- CSS Variables / Theming --- */
+      :root {
+        --bg: #121212;
+        --bg-nav: #1e1e1e;
+        --bg-card: #252525;
+        --text: #e0e0e0;
+        --text-muted: #999;
+        --border: #333;
+        --accent: #8a9bb2;
+        --input-bg: #2a2a2a;
+        --btn-hover: #383838;
+      }
 
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: #1a1a1a;
-            height: 100vh;
-            overflow: hidden;
-        }
+      /* --- Reset & Base --- */
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
 
-        .toolbar {
-            display: flex;
-            gap: 8px;
-            padding: 12px;
-            background: #2d2d2d;
-            border-bottom: 1px solid #3d3d3d;
-            align-items: center;
-        }
+      /* --- Navbar --- */
+      #navbar {
+        display: flex;
+        align-items: center;
+        height: 48px;
+        padding: 0 12px;
+        background: var(--bg-nav);
+        border-bottom: 1px solid var(--border);
+        gap: 8px;
+        z-index: 1000;
+        position: relative;
+      }
+      .nav-center {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        gap: 4px;
+        min-width: 0;
+      }
+      .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .nav-btn {
+        background: none;
+        border: none;
+        color: var(--text);
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 6px;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s;
+      }
+      .nav-btn:hover {
+        background: var(--btn-hover);
+      }
+      #navbar-form {
+        flex: 1;
+        display: flex;
+        min-width: 0;
+      }
+      #navbar-url {
+        width: 100%;
+        padding: 6px 12px;
+        font-size: 14px;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        background: var(--input-bg);
+        color: var(--text);
+        outline: none;
+        transition: border 0.2s;
+      }
+      #navbar-url:focus {
+        border-color: var(--accent);
+      }
 
-        .nav-buttons {
-            display: flex;
-            gap: 4px;
-        }
+      /* --- Home Content --- */
+      #home-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: calc(100vh - 48px);
+      }
+      .home-center {
+        text-align: center;
+      }
+      .home-logo {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 16px;
+        fill: var(--accent);
+      }
+      .home-center h1 {
+        margin-bottom: 24px;
+        font-size: 28px;
+        font-weight: 600;
+      }
+      #home-form {
+        display: flex;
+        justify-content: center;
+      }
+      #home-search {
+        width: 400px;
+        max-width: 90vw;
+        padding: 12px 20px;
+        font-size: 16px;
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        background: var(--input-bg);
+        color: var(--text);
+        outline: none;
+        transition: border 0.2s, box-shadow 0.2s;
+      }
+      #home-search:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(138, 155, 178, 0.2);
+      }
 
-        button {
-            background: #3d3d3d;
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-
-        button:hover {
-            background: #4d4d4d;
-        }
-
-        button:active {
-            transform: scale(0.95);
-        }
-
-        input {
-            flex: 1;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #3d3d3d;
-            background: #1a1a1a;
-            color: white;
-            font-size: 14px;
-            outline: none;
-        }
-
-        input:focus {
-            border-color: #0066cc;
-        }
-
-        .status {
-            padding: 4px 12px;
-            background: #3d3d3d;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #aaa;
-        }
-
-        iframe {
-            width: 100%;
-            flex: 1;
-            border: none;
-            background: white;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
+      /* --- Frame Container --- */
+      #frame-container {
+        display: none;
+        height: calc(100vh - 48px);
+        width: 100%;
+      }
+      #proxy-frame {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
     </style>
-</head>
+  </head>
+  <body>
+    <!-- Top Navbar -->
+    <nav id="navbar">
+      <div class="nav-center">
+        <button id="btn-back" class="nav-btn" title="Back">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12l14 0" /><path d="M5 12l6 6" /><path d="M5 12l6 -6" />
+          </svg>
+        </button>
+        <button id="btn-forward" class="nav-btn" title="Forward">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12l14 0" /><path d="M19 12l-6 6" /><path d="M19 12l-6 -6" />
+          </svg>
+        </button>
+        <button id="btn-reload" class="nav-btn" title="Reload">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+          </svg>
+        </button>
+        <form id="navbar-form" autocomplete="off">
+          <input id="navbar-url" type="text" placeholder="Search or enter URL" />
+        </form>
+      </div>
+      <div class="nav-right">
+        <button id="btn-home" class="nav-btn" title="Home">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+          </svg>
+        </button>
+        <button id="btn-fullscreen" class="nav-btn" title="Fullscreen">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8V6a2 2 0 0 1 2-2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2-2v-2" />
+          </svg>
+        </button>
+      </div>
+    </nav>
 
-<body>
-    <div class="container">
-        <div class="toolbar">
-            <div class="nav-buttons">
-                <button id="backBtn" title="Back">←</button>
-                <button id="forwardBtn" title="Forward">→</button>
-                <button id="reloadBtn" title="Reload">↻</button>
-            </div>
-            <input type="text" id="urlInput" placeholder="Enter URL..." value="https://example.com">
-            <button id="goBtn">Go</button>
-            <div class="status" id="status">Ready</div>
-        </div>
-        <iframe id="browserFrame" title="Scramjet Browser"></iframe>
+    <!-- Homepage content -->
+    <div id="home-content">
+      <div class="home-center">
+        <svg class="home-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h1>Scramjet</h1>
+        <form id="home-form" autocomplete="off">
+          <input id="home-search" type="text" placeholder="Search or enter URL" autofocus />
+        </form>
+      </div>
     </div>
-    <!--
-        STEP 1: Load the libraries. Keep these as plain <script> tags. Do not turn
-        them into type="module" / imports. They put their API on the global object
-        (window.$scramjet, window.$scramjetController, window.EpoxyTransport), and
-        that only happens in a classic script.
 
-        scramjet/ and controller/ need to live at your site root. The service worker
-        loads scramjet.js and scramjet.wasm from /scramjet/ and the inject script
-        from /controller/, so keep those paths unless you also change the controller
-        config.
+    <!-- Proxy iframe container -->
+    <div id="frame-container">
+      <iframe id="proxy-frame" title="Scramjet Browser"></iframe>
+    </div>
+
+    <!--
+      Load the libraries. Keep these as plain <script> tags. Do not turn
+      them into type="module" / imports. They put their API on the global object
+      (window.$scramjet, window.$scramjetController, window.EpoxyTransport), and
+      that only happens in a classic script.
+
+      scramjet/ and controller/ need to live at your site root. The service worker
+      loads scramjet.js and scramjet.wasm from /scramjet/ and the inject script
+      from /controller/, so keep those paths unless you also change the controller
+      config.
     -->
     <script src="/scramjet/scramjet.js"></script>
     <script src="/controller/controller.api.js"></script>
@@ -121,89 +221,198 @@
     <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@3.0.1/dist/index.js"></script>
 
     <script>
-        // STEP 2: Pull the classes off the globals the scripts above set up.
-        const { Controller } = $scramjetController;
-        const { defaultConfig } = $scramjet;
-        const EpoxyTransport = self.EpoxyTransport.default;
+      "use strict";
 
-        const iframe = document.getElementById("browserFrame");
-        const urlInput = document.getElementById("urlInput");
-        const statusEl = document.getElementById("status");
+      // Pull the classes off the globals the scripts above set up.
+      const { Controller } = $scramjetController;
+      const { defaultConfig } = $scramjet;
+      const EpoxyTransport = self.EpoxyTransport.default;
 
-        let scramjet = null;
-        let frame = null;
+      const iframe = document.getElementById("proxy-frame");
+      const navbarUrl = document.getElementById("navbar-url");
+      const navbarForm = document.getElementById("navbar-form");
+      const homeForm = document.getElementById("home-form");
+      const homeSearch = document.getElementById("home-search");
+      const homeContent = document.getElementById("home-content");
+      const frameContainer = document.getElementById("frame-container");
+      const navbar = document.getElementById("navbar");
 
-        function setStatus(t, err = false) {
-            statusEl.textContent = t;
-            statusEl.style.color = err ? "#ff6b6b" : "#aaa";
+      let scramjet = null;
+      let frame = null;
+      let urlMonitorInterval = null;
+      let navbarUrlFocused = false;
+
+      function norm(u) {
+        u = u.trim();
+        const isUrl = /^https?:\/\//i.test(u) || (/\.[a-z]{2,}$/i.test(u) && !/\s/.test(u));
+        if (isUrl) {
+          return u.startsWith("http") ? u : "https://" + u;
+        }
+        return "https://duckduckgo.com/?q=" + encodeURIComponent(u);
+      }
+
+      async function init() {
+        try {
+          // Wait for the service worker (registered at the bottom) to be active.
+          await navigator.serviceWorker.ready;
+
+          const serviceworker =
+            navigator.serviceWorker.controller ??
+            (await navigator.serviceWorker.ready).active;
+
+          // Connect a transport to a wisp server.
+          // Use your own wisp server in production. Public ones get
+          // rate-limited and can go offline.
+          const transport = new EpoxyTransport({
+            wisp: "wss://wisp.mercurywork.shop/"
+          });
+
+          await transport.init();
+
+          // Create the controller. defaultConfig is fine to start with;
+          // change it if you need custom rewriting behaviour.
+          scramjet = new Controller({
+            serviceworker,
+            transport,
+            scramjetConfig: defaultConfig
+          });
+
+          await scramjet.wait();
+
+          // Bind a frame to the <iframe>.
+          frame = scramjet.createFrame(iframe);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // Navigate the iframe to whatever is typed in the URL bar / search box.
+      function go(input) {
+        if (!frame) return;
+        const url = norm(input);
+        navbarUrl.value = url;
+
+        // Show frame, hide home
+        homeContent.style.display = "none";
+        frameContainer.style.display = "block";
+
+        frame.go(url);
+
+        monitorIframeNavigation();
+      }
+
+      function monitorIframeNavigation() {
+        if (urlMonitorInterval) {
+          clearInterval(urlMonitorInterval);
+          urlMonitorInterval = null;
         }
 
-        function norm(u) {
-            return u.startsWith("http") ? u : "https://" + u;
-        }
+        urlMonitorInterval = setInterval(() => {
+          if (!frame || !iframe.contentWindow) {
+            clearInterval(urlMonitorInterval);
+            return;
+          }
 
-        async function init() {
-            try {
-                setStatus("Initializing...");
+          // Don't update if in fullscreen mode
+          if (document.fullscreenElement || document.webkitFullscreenElement) return;
 
-                // Wait for the service worker (registered at the bottom) to be active.
-                await navigator.serviceWorker.ready;
+          // Don't update if user is typing in the navbar
+          if (navbarUrlFocused || document.activeElement === navbarUrl) return;
 
-                const serviceworker =
-                    navigator.serviceWorker.controller ??
-                    (await navigator.serviceWorker.ready).active;
-
-                // STEP 3: Connect a transport to a wisp server.
-                // Use your own wisp server in production. Public ones get
-                // rate-limited and can go offline.
-                const transport = new EpoxyTransport({
-                    wisp: "wss://wisp.mercurywork.shop/"
-                });
-
-                await transport.init();
-
-                // STEP 4: Create the controller. defaultConfig is fine to start with;
-                // change it if you need custom rewriting behaviour.
-                scramjet = new Controller({
-                    serviceworker,
-                    transport,
-                    scramjetConfig: defaultConfig
-                });
-
-                await scramjet.wait();
-
-                // STEP 5: Bind a frame to the <iframe> and navigate it.
-                frame = scramjet.createFrame(iframe);
-                frame.go("https://example.com");
-
-                setStatus("Ready");
-            } catch (e) {
-                console.error(e);
-                setStatus(e.message, true);
+          try {
+            const iframeUrl = iframe.contentWindow.location.href;
+            if (iframeUrl && !iframeUrl.startsWith("about:blank")) {
+              const decodedUrl = frame.decodeUrl
+                ? frame.decodeUrl(iframeUrl)
+                : iframeUrl;
+              if (decodedUrl && decodedUrl !== navbarUrl.value && decodedUrl !== "about:blank") {
+                navbarUrl.value = decodedUrl;
+              }
             }
+          } catch (e) {
+            // Cross-origin access blocked (expected depending on proxy setup)
+          }
+        }, 500);
+      }
+
+      // --- Event Handlers ---
+      navbarUrl.addEventListener("focus", () => (navbarUrlFocused = true));
+      navbarUrl.addEventListener("blur", () => (navbarUrlFocused = false));
+
+      homeForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const val = homeSearch.value.trim();
+        if (val) go(val);
+      });
+
+      navbarForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const val = navbarUrl.value.trim();
+        if (val) go(val);
+      });
+
+      document.getElementById("btn-back").addEventListener("click", () => {
+        if (iframe.contentWindow) {
+          try { iframe.contentWindow.history.back(); } catch (e) {}
         }
+      });
 
-        // Navigate the iframe to whatever is typed in the URL bar.
-        function go() {
-            const url = norm(urlInput.value);
-            urlInput.value = url;
-            frame?.go(url);
+      document.getElementById("btn-forward").addEventListener("click", () => {
+        if (iframe.contentWindow) {
+          try { iframe.contentWindow.history.forward(); } catch (e) {}
         }
+      });
 
-        document.getElementById("goBtn").onclick = go;
+      document.getElementById("btn-reload").addEventListener("click", () => {
+        if (iframe.contentWindow) {
+          try { iframe.contentWindow.location.reload(); } catch (e) {}
+        }
+      });
 
-        urlInput.addEventListener("keydown", e => {
-            if (e.key === "Enter") go();
-        });
+      document.getElementById("btn-home").addEventListener("click", () => {
+        if (urlMonitorInterval) {
+          clearInterval(urlMonitorInterval);
+          urlMonitorInterval = null;
+        }
+        frameContainer.style.display = "none";
+        homeContent.style.display = "flex";
+        navbarUrl.value = "";
+        homeSearch.value = "";
+        homeSearch.focus();
+      });
 
-        // STEP 6: Register the service worker, then boot once it's ready.
-        // Service workers only run in a secure context: https:// or http://localhost.
-        if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("/sw.js").then(init);
+      // Fullscreen logic
+      document.getElementById("btn-fullscreen").addEventListener("click", () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          const elem = document.documentElement;
+          if (elem.requestFullscreen) elem.requestFullscreen();
+          else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+          else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
         } else {
-            setStatus("No service worker support", true);
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          else if (document.msExitFullscreen) document.msExitFullscreen();
         }
-    </script>
-</body>
+      });
 
+      function handleFullscreenChange() {
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          navbar.style.display = "none";
+          frameContainer.style.height = "100vh";
+        } else {
+          navbar.style.display = "flex";
+          frameContainer.style.height = "calc(100vh - 48px)";
+        }
+      }
+
+      document.addEventListener("fullscreenchange", handleFullscreenChange);
+      document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+
+      // Register the service worker, then boot once it's ready.
+      // Service workers only run in a secure context: https:// or http://localhost.
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").then(init);
+      }
+    </script>
+  </body>
 </html>
