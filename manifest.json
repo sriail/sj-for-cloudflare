@@ -11,9 +11,9 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/images/icons/icon-72x72.png",
+      "src": "assets/logo.svg",
       "sizes": "72x72",
-      "type": "image/png"
+      "type": "image/svg"
     },
   "categories": ["productivity", "utilities"]
 }
