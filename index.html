@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Scramjet</title>
     <link rel="manifest" href="/manifest.json">
+    <script type="module">
+      // importing the wisp server priority script
+    import { wispConfig } from '/wisp/wisp-routes.js';
+    window.wispConfig = wispConfig;
+    </script>
     <style>
       /* --- CSS Variables / Theming --- */
       :root,
