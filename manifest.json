@@ -1,0 +1,19 @@
+{
+  "name": "Scramjet",
+  "short_name": "Scramjet",
+  "description": "A Lightweight Web Browser for the Web.",
+  "start_url": "/",
+  "id": "/?source=pwa",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2196f3",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/images/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+  "categories": ["productivity", "utilities"]
+}
