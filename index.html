@@ -419,31 +419,52 @@
             (await navigator.serviceWorker.ready).active;
 
           // Pull the classes off the globals (Moved here to avoid crashing the UI if scripts are missing)
-          const { Controller } = window.$scramjetController;
-          const { defaultConfig } = window.$scramjet;
-          const EpoxyTransport = self.EpoxyTransport.default;
-
-          // Connect a transport to a wisp server.
-          const wispConfig = window.wispConfig;
-          const sortedRoutes = [...wispConfig.wss_routes].sort((a, b) => a.priority - b.priority);
+            const wispConfig = window.wispConfig;
+            const sortedRoutes = [...wispConfig.wss_routes].sort((a, b) => a.priority - b.priority);
             let transport = null;
 
-              for (const route of sortedRoutes) {
-                try {
-                   console.log(`[Wisp] Trying ${route.name} (${route.route})`);
-                    transport = new EpoxyTransport({ wisp: route.route });
-                    await transport.init();
-                    console.log(`[Wisp] Connected to ${route.name}`);
-                      break;
-                  } catch (e) {
-                  console.warn(`[Wisp] ${route.name} failed:`, e.message);
-                transport = null;
+            for (const route of sortedRoutes) {
+              try {
+                console.log(`[Wisp] Trying ${route.name} (${route.route})`);
+                
+                // Pre-flight check: Test if a Wisp server is actually deployed at this route.
+                // Static hosts will return a 200 OK HTML response instead of a WebSocket upgrade,
+                // which causes the WebSocket to error out immediately.
+                const isAlive = await new Promise((resolve) => {
+                  const ws = new WebSocket(route.route);
+                  const timeout = setTimeout(() => {
+                    ws.close();
+                    resolve(false);
+                  }, 1500); // 1.5-second timeout
+
+                  ws.onopen = () => {
+                    clearTimeout(timeout);
+                    ws.close();
+                    resolve(true);
+                  };
+                  ws.onerror = () => {
+                    clearTimeout(timeout);
+                    resolve(false);
+                  };
+                });
+
+                if (!isAlive) {
+                  throw new Error("No Wisp server detected");
                 }
+
+                transport = new EpoxyTransport({ wisp: route.route });
+                await transport.init();
+                console.log(`[Wisp] Connected to ${route.name}`);
+                break;
+              } catch (e) {
+                console.warn(`[Wisp] ${route.name} failed:`, e.message);
+                transport = null;
+              }
             }
 
             if (!transport) {
-             throw new Error('All wisp servers failed');
-          }
+              throw new Error('All wisp servers failed');
+            }
 
           // Create the controller.
           scramjet = new Controller({
