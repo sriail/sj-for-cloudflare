@@ -6,7 +6,7 @@ export const wispConfig = {
   "wss_routes": [ // feel free to change wss routes, remove non local, or remove local routes, or add alterear indexes
     {
       "name": "local-wisp",
-      "route": `${wsProtocol}//${currentUrl.host}/`, // local wisp (only host when a server side present)
+      "route": `${wsProtocol}//${currentUrl.host}/`, // local wisp (only host when a server side is present)
       "priority": 0
     },
     {
