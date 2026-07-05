@@ -307,8 +307,7 @@
     </div>
 
     <script src="/scramjet/scramjet.js"></script>
-    <script src="/controller/controller.api.js"></script>
-    <script src="/epoxy/index.js"></script>
+        <script src="/epoxy/index.js"></script>
 
     <script>
       "use strict";
@@ -414,41 +413,64 @@
           // Wait for the service worker (registered at the bottom) to be active.
           await navigator.serviceWorker.ready;
 
-          const serviceworker =
-            navigator.serviceWorker.controller ??
-            (await navigator.serviceWorker.ready).active;
-
-          // Pull the classes off the globals (Moved here to avoid crashing the UI if scripts are missing)
-          // Pull the classes off the globals (Moved here to avoid crashing the UI if scripts are missing)
-          const { Controller } = window.$scramjetController;
-          const { defaultConfig } = window.$scramjet;
-          
-          // Handle both direct and default exports for EpoxyTransport
-          let EpoxyTransportClass = null;
-          if (typeof self.EpoxyTransport !== 'undefined') {
-            EpoxyTransportClass = self.EpoxyTransport.default || self.EpoxyTransport;
+          if (typeof $scramjetLoadController !== "function") {
+            throw new Error("Scramjet loader is missing from /scramjet/scramjet.js");
           }
 
-          // Connect a transport to a wisp server.
+          const { ScramjetController } = $scramjetLoadController();
+          const scramjetInitConfig = {
+            prefix: "/~/sj/",
+            files: {
+              wasm: "/scramjet/scramjet.wasm",
+              all: "/scramjet/scramjet.js",
+              sync: "/scramjet/scramjet.sync.js"
+            },
+            codec: {
+              encode: (url) => (url ? encodeURIComponent(url) : url),
+              decode: (url) => (url ? decodeURIComponent(url) : url)
+            }
+          };
+
+          const clearScramjetDb = () =>
+            new Promise((resolve) => {
+              const req = indexedDB.deleteDatabase("$scramjet");
+              req.onsuccess = req.onerror = req.onblocked = () => resolve();
+            });
+
+          const initializeController = async () => {
+            try {
+              await scramjet.init();
+            } catch (err) {
+              if (err?.name !== "NotFoundError") throw err;
+              await clearScramjetDb();
+              scramjet = new ScramjetController(scramjetInitConfig);
+              await scramjet.init();
+            }
+          };
+
+          scramjet = new ScramjetController(scramjetInitConfig);
+          initializeController().catch((err) => {
+            console.error("Failed to initialize Scramjet:", err);
+          });
+
+          const { BareMuxConnection } = await import("/baremux/index.mjs");
+          const connection = new BareMuxConnection("/baremux/worker.js");
+          frame = scramjet.createFrame(iframe);
+
           const wispConfig = window.wispConfig;
           const sortedRoutes = [...wispConfig.wss_routes].sort((a, b) => a.priority - b.priority);
-          let transport = null;
+          let connected = false;
 
           for (const route of sortedRoutes) {
             try {
-              if (!EpoxyTransportClass) {
-                throw new Error("EpoxyTransport script failed to load");
-              }
-
               console.log(`[Wisp] Trying ${route.name} (${route.route})`);
-              
-              // Pre-flight check: Test if a Wisp server is actually deployed at this route.
+
               const isAlive = await new Promise((resolve) => {
                 const ws = new WebSocket(route.route);
                 const timeout = setTimeout(() => {
                   ws.close();
                   resolve(false);
-                }, 1500); // 1.5s timeout
+                }, 1500);
 
                 ws.onopen = () => {
                   clearTimeout(timeout);
@@ -465,31 +487,23 @@
                 throw new Error("No Wisp server detected");
               }
 
-              transport = new EpoxyTransportClass({ wisp: route.route });
-              await transport.init();
+              await Promise.race([
+                connection.setTransport("/epoxy/index.mjs", [{ wisp: route.route }]),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error("Transport connection timeout")), 4000)
+                )
+              ]);
               console.log(`[Wisp] Connected to ${route.name}`);
+              connected = true;
               break;
             } catch (e) {
               console.warn(`[Wisp] ${route.name} failed:`, e.message);
-              transport = null;
             }
           }
 
-          if (!transport) {
-            throw new Error('All wisp servers failed');
+          if (!connected) {
+            console.warn("All wisp servers failed. Proxy traffic will not work until a reachable wisp route is available.");
           }
-
-          // Create the controller.
-          scramjet = new Controller({
-            serviceworker,
-            transport,
-            scramjetConfig: defaultConfig
-          });
-
-          await scramjet.wait();
-
-          // Bind a frame to the <iframe>.
-          frame = scramjet.createFrame(iframe);
         } catch (e) {
           console.error("Failed to initialize Scramjet:", e);
         }
