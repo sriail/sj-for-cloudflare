@@ -1,4 +1,4 @@
-# Scramjet HTML/JS Template (v2.0.67-alpha.1)
+# Scramjet HTML/JS Template (v1.1.0 dist)
 
 A [Scramjet](https://github.com/MercuryWorkshop/scramjet) web proxy: a URL bar and an
 `<iframe>` that browses sites through Scramjet. The Scramjet and controller files are
@@ -11,8 +11,10 @@ index.html              UI plus the ~40 lines of JS that wire up Scramjet
 sw.js                   Service worker (loads the controller)
 controller/             Scramjet controller bundle (vendored)
 scramjet/
-  scramjet.js           Scramjet runtime (vendored)
+  scramjet.js           Scramjet runtime (vendored, dist/scramjet.all.js)
+  scramjet.sync.js      Scramjet sync helper (vendored, dist/scramjet.sync.js)
   scramjet.wasm         Rewriter WASM (vendored)
+baremux/                BareMux worker/runtime files (vendored)
 ```
 
 The folder paths matter. See [File layout](#file-layout) below.
@@ -151,11 +153,12 @@ do this already.
 Swap the vendored files for the version you want:
 
 ```sh
-V=2.0.67-alpha.1
-curl -o scramjet/scramjet.js   "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@$V/dist/scramjet.js"
-curl -o scramjet/scramjet.wasm "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@$V/dist/scramjet.wasm"
-# controller/ comes from @mercuryworkshop/scramjet-controller
+V=1.1.0
+npm pack @mercuryworkshop/scramjet@$V
+# use dist/scramjet.all.js  -> scramjet/scramjet.js
+# use dist/scramjet.sync.js -> scramjet/scramjet.sync.js
+# use dist/scramjet.wasm.wasm -> scramjet/scramjet.wasm
 ```
 
-Keep the controller and scramjet versions in sync. The controller checks the
-runtime version at startup and throws if they don't match.
+For this repository, keep `scramjet/` assets and the local compatibility files
+in `controller/` aligned to the same migration baseline.
