@@ -1,4 +1,10 @@
-<!DOCTYPE html>
+/**
+ * Scramjet Cloudflare Worker Entry Point
+ * 
+ * Serves the Scramjet proxy UI and associated static assets.
+ */
+
+const HTML_CONTENT = `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -6,12 +12,10 @@
     <title>Scramjet</title>
     <link rel="manifest" href="/manifest.json">
     <script type="module">
-      // importing the wisp server priority script
     import { wispConfig } from '/wisp/wisp-routes.js';
     window.wispConfig = wispConfig;
     </script>
     <style>
-      /* --- CSS Variables / Theming --- */
       :root,
       [data-theme="light"] {
         --bg: #f5f5f5;
@@ -37,24 +41,17 @@
         --btn-hover: #383838;
         --settings-bg: #252525;
       }
-
-      /* --- Reset & Base --- */
-      *,
-      *::before,
-      *::after {
+      *, *::before, *::after {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
-      html,
-      body {
+      html, body {
         height: 100%;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background: var(--bg);
         color: var(--text);
       }
-
-      /* --- Navbar --- */
       #navbar {
         display: flex;
         align-items: center;
@@ -91,9 +88,7 @@
         justify-content: center;
         transition: background 0.15s;
       }
-      .nav-btn:hover {
-        background: var(--btn-hover);
-      }
+      .nav-btn:hover { background: var(--btn-hover); }
       #navbar-form {
         flex: 1;
         display: flex;
@@ -110,36 +105,27 @@
         outline: none;
         transition: border 0.2s;
       }
-      #navbar-url:focus {
-        border-color: var(--accent);
-      }
-
-      /* --- Home Content --- */
+      #navbar-url:focus { border-color: var(--accent); }
       #home-content {
         display: flex;
         align-items: center;
         justify-content: center;
         height: calc(100vh - 48px);
       }
-      .home-center {
-        text-align: center;
-      }
+      .home-center { text-align: center; }
       .home-logo {
         width: 190px;
         height: 190px;
         margin-bottom: 24px;
-        fill: var(--text); 
-        color: var(--text); /* Matches the navbar SVG icons */
+        fill: var(--text);
+        color: var(--text);
       }
       .home-center h1 {
         margin-bottom: 24px;
         font-size: 28px;
         font-weight: 600;
       }
-      #home-form {
-        display: flex;
-        justify-content: center;
-      }
+      #home-form { display: flex; justify-content: center; }
       #home-search {
         width: 400px;
         max-width: 90vw;
@@ -156,8 +142,6 @@
         border-color: var(--accent);
         box-shadow: 0 0 0 3px rgba(138, 155, 178, 0.2);
       }
-
-      /* --- Frame Container --- */
       #frame-container {
         display: none;
         height: calc(100vh - 48px);
@@ -168,8 +152,6 @@
         height: 100%;
         border: none;
       }
-
-      /* --- Settings Panel --- */
       #settings-panel {
         display: none;
         position: absolute;
@@ -184,13 +166,8 @@
         z-index: 999;
         padding: 20px;
       }
-      .settings-content h2 {
-        font-size: 18px;
-        margin-bottom: 16px;
-      }
-      .settings-group {
-        margin-bottom: 16px;
-      }
+      .settings-content h2 { font-size: 18px; margin-bottom: 16px; }
+      .settings-group { margin-bottom: 16px; }
       .settings-group label {
         display: block;
         font-size: 13px;
@@ -218,13 +195,10 @@
         cursor: pointer;
         transition: background 0.15s;
       }
-      .settings-btn:hover {
-        background: var(--btn-hover);
-      }
+      .settings-btn:hover { background: var(--btn-hover); }
     </style>
   </head>
   <body>
-    <!-- Top Navbar -->
     <nav id="navbar">
       <div class="nav-center">
         <button id="btn-back" class="nav-btn" title="Back">
@@ -266,7 +240,6 @@
       </div>
     </nav>
 
-    <!-- Settings panel (inline) — color mode only -->
     <div id="settings-panel">
       <div class="settings-content">
         <h2>Settings</h2>
@@ -282,7 +255,6 @@
       </div>
     </div>
 
-    <!-- Homepage content -->
     <div id="home-content">
       <div class="home-center">
         <svg class="home-logo" viewBox="0 0 1400 1400" xmlns="http://www.w3.org/2000/svg">
@@ -301,7 +273,6 @@
       </div>
     </div>
 
-    <!-- Proxy iframe container -->
     <div id="frame-container">
       <iframe id="proxy-frame" title="Scramjet Browser"></iframe>
     </div>
@@ -313,7 +284,6 @@
     <script>
       "use strict";
 
-      // --- Settings Helpers (color mode only) ---
       function loadSettings() {
         const defaults = { theme: "system" };
         try {
@@ -325,7 +295,6 @@
       }
 
       function saveSettings(settings) {
-        // Wrapped in try/catch in case localStorage is blocked by browser privacy settings
         try {
           localStorage.setItem("proxy-settings", JSON.stringify(settings));
         } catch (e) {
@@ -339,22 +308,15 @@
           resolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         }
         document.documentElement.setAttribute("data-theme", resolved);
-
-        // Refresh favicon to match resolved theme color
         updateFavicon();
-
-        // Apply theme to proxy iframe if it exists
         const frame = document.getElementById("proxy-frame");
         if (frame) {
           try {
             frame.contentDocument.documentElement.setAttribute("data-theme", resolved);
-          } catch (e) {
-            // Cross-origin, ignore
-          }
+          } catch (e) {}
         }
       }
 
-      // --- State ---
       let settings = loadSettings();
       let settingsOpen = false;
       let scramjet = null;
@@ -362,7 +324,6 @@
       let urlMonitorInterval = null;
       let navbarUrlFocused = false;
 
-      // --- DOM Refs ---
       const iframe = document.getElementById("proxy-frame");
       const navbarUrl = document.getElementById("navbar-url");
       const navbarForm = document.getElementById("navbar-form");
@@ -375,7 +336,6 @@
       const themeSelect = document.getElementById("theme-select");
       const saveBtn = document.getElementById("settings-save");
 
-      // --- Favicon ---
       const logoSvg = document.querySelector(".home-logo");
       function updateFavicon() {
         if (!logoSvg) return;
@@ -392,17 +352,15 @@
         favicon.href = faviconUrl;
       }
 
-      // --- Apply theme on load ---
       applyTheme(settings.theme);
 
-      // Listen for system theme changes
       window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
         if (settings.theme === "system") applyTheme("system");
       });
 
       function norm(u) {
         u = u.trim();
-        const isUrl = /^https?:\/\//i.test(u) || (/\.[a-z]{2,}$/i.test(u) && !/\s/.test(u));
+        const isUrl = /^https?:\\/\\//i.test(u) || (/\\.[a-z]{2,}$/i.test(u) && !/\\s/.test(u));
         if (isUrl) {
           return u.startsWith("http") ? u : "https://" + u;
         }
@@ -411,25 +369,19 @@
 
       async function init() {
         try {
-          // Wait for the service worker (registered at the bottom) to be active.
           await navigator.serviceWorker.ready;
-
           const serviceworker =
             navigator.serviceWorker.controller ??
             (await navigator.serviceWorker.ready).active;
 
-          // Pull the classes off the globals (Moved here to avoid crashing the UI if scripts are missing)
-          // Pull the classes off the globals (Moved here to avoid crashing the UI if scripts are missing)
           const { Controller } = window.$scramjetController;
           const { defaultConfig } = window.$scramjet;
           
-          // Handle both direct and default exports for EpoxyTransport
           let EpoxyTransportClass = null;
           if (typeof self.EpoxyTransport !== 'undefined') {
             EpoxyTransportClass = self.EpoxyTransport.default || self.EpoxyTransport;
           }
 
-          // Connect a transport to a wisp server.
           const wispConfig = window.wispConfig;
           const sortedRoutes = [...wispConfig.wss_routes].sort((a, b) => a.priority - b.priority);
           let transport = null;
@@ -440,15 +392,14 @@
                 throw new Error("EpoxyTransport script failed to load");
               }
 
-              console.log(`[Wisp] Trying ${route.name} (${route.route})`);
+              console.log(\`[Wisp] Trying \${route.name} (\${route.route})\`);
               
-              // Pre-flight check: Test if a Wisp server is actually deployed at this route.
               const isAlive = await new Promise((resolve) => {
                 const ws = new WebSocket(route.route);
                 const timeout = setTimeout(() => {
                   ws.close();
                   resolve(false);
-                }, 1500); // 1.5s timeout
+                }, 1500);
 
                 ws.onopen = () => {
                   clearTimeout(timeout);
@@ -467,10 +418,10 @@
 
               transport = new EpoxyTransportClass({ wisp: route.route });
               await transport.init();
-              console.log(`[Wisp] Connected to ${route.name}`);
+              console.log(\`[Wisp] Connected to \${route.name}\`);
               break;
             } catch (e) {
-              console.warn(`[Wisp] ${route.name} failed:`, e.message);
+              console.warn(\`[Wisp] \${route.name} failed:\`, e.message);
               transport = null;
             }
           }
@@ -479,7 +430,6 @@
             throw new Error('All wisp servers failed');
           }
 
-          // Create the controller.
           scramjet = new Controller({
             serviceworker,
             transport,
@@ -487,15 +437,12 @@
           });
 
           await scramjet.wait();
-
-          // Bind a frame to the <iframe>.
           frame = scramjet.createFrame(iframe);
         } catch (e) {
           console.error("Failed to initialize Scramjet:", e);
         }
       }
 
-      // Navigate the iframe to whatever is typed in the URL bar / search box.
       function go(input) {
         if (!frame) {
           console.warn("Scramjet frame not initialized yet.");
@@ -504,16 +451,12 @@
         const url = norm(input);
         navbarUrl.value = url;
 
-        // Show frame, hide home
         homeContent.style.display = "none";
         frameContainer.style.display = "block";
-
-        // Close settings if open
         settingsPanel.style.display = "none";
         settingsOpen = false;
 
         frame.go(url);
-
         monitorIframeNavigation();
       }
 
@@ -528,30 +471,21 @@
             clearInterval(urlMonitorInterval);
             return;
           }
-
-          // Don't update if in fullscreen mode
           if (document.fullscreenElement || document.webkitFullscreenElement) return;
-
-          // Don't update if user is typing in the navbar
           if (navbarUrlFocused || document.activeElement === navbarUrl) return;
 
           try {
             const iframeUrl = iframe.contentWindow.location.href;
             if (iframeUrl && !iframeUrl.startsWith("about:blank")) {
-              const decodedUrl = frame.decodeUrl
-                ? frame.decodeUrl(iframeUrl)
-                : iframeUrl;
+              const decodedUrl = frame.decodeUrl ? frame.decodeUrl(iframeUrl) : iframeUrl;
               if (decodedUrl && decodedUrl !== navbarUrl.value && decodedUrl !== "about:blank") {
                 navbarUrl.value = decodedUrl;
               }
             }
-          } catch (e) {
-            // Cross-origin access blocked (expected depending on proxy setup)
-          }
+          } catch (e) {}
         }, 500);
       }
 
-      // --- Event Handlers ---
       navbarUrl.addEventListener("focus", () => (navbarUrlFocused = true));
       navbarUrl.addEventListener("blur", () => (navbarUrlFocused = false));
 
@@ -599,7 +533,6 @@
         homeSearch.focus();
       });
 
-      // Settings logic — color mode only
       document.getElementById("btn-settings").addEventListener("click", () => {
         settingsOpen = !settingsOpen;
         settingsPanel.style.display = settingsOpen ? "block" : "none";
@@ -616,7 +549,6 @@
         settingsOpen = false;
       });
 
-      // Fullscreen logic
       document.getElementById("btn-fullscreen").addEventListener("click", () => {
         if (!document.fullscreenElement && !document.webkitFullscreenElement) {
           const elem = document.documentElement;
@@ -643,10 +575,126 @@
       document.addEventListener("fullscreenchange", handleFullscreenChange);
       document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
-      // Register the service worker, then boot once it's ready.
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/sw.js").then(init);
       }
     </script>
   </body>
-</html>
+</html>`;
+
+/**
+ * Static asset stubs.
+ *
+ * NOTE: In production these should be replaced with the actual contents of each
+ * file (or served from Cloudflare R2/KV/Pages). They are stubbed here so the
+ * worker boots cleanly without 500s on missing routes. Replace the bodies with
+ * real file contents (or fetch from a binding like env.ASSETS) as needed.
+ */
+const ASSETS = {
+  "/manifest.json": {
+    body: JSON.stringify({
+      name: "Scramjet",
+      short_name: "Scramjet",
+      start_url: "/",
+      display: "standalone",
+      background_color: "#121212",
+      theme_color: "#121212"
+    }, null, 2),
+    contentType: "application/manifest+json"
+  },
+  "/sw.js": {
+    body: "// Service worker placeholder — replace with the real scramjet service worker bundle.",
+    contentType: "application/javascript"
+  },
+  "/scramjet/scramjet.js": {
+    body: "// Replace with the real scramjet.js bundle. Exposes window.$scramjet.defaultConfig.",
+    contentType: "application/javascript"
+  },
+  "/controller/controller.api.js": {
+    body: "// Replace with the real controller bundle. Exposes window.$scramjetController.Controller.",
+    contentType: "application/javascript"
+  },
+  "/epoxy/index.js": {
+    body: "// Replace with the real EpoxyTransport bundle. Exposes self.EpoxyTransport.",
+    contentType: "application/javascript"
+  },
+  "/wisp/wisp-routes.js": {
+    body: [
+      "// Wisp route configuration.",
+      "// Replace with your real Wisp endpoints, ordered by priority.",
+      "export const wispConfig = {",
+      "  wss_routes: [",
+      "    { name: 'primary',  route: 'wss://your-worker.example.com/wisp/', priority: 1 },",
+      "    { name: 'fallback', route: 'wss://fallback.example.com/wisp/',   priority: 2 }",
+      "  ]",
+      "};"
+    ].join("\n"),
+    contentType: "application/javascript"
+  }
+};
+
+/**
+ * Map a request path to a static asset (if any).
+ */
+function matchAsset(pathname) {
+  if (ASSETS[pathname]) return ASSETS[pathname];
+  // Bare path with no trailing slash → redirect to dir + "/index.js"?
+  // (Keep simple — only exact matches here.)
+  return null;
+}
+
+/**
+ * Main fetch handler.
+ */
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const { pathname } = url;
+
+    // --- CORS headers (helpful when worker is hit cross-origin) ---
+    const baseHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "*"
+    };
+
+    // Preflight
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: baseHeaders });
+    }
+
+    // --- Serve homepage ---
+    if (pathname === "/" || pathname === "/index.html") {
+      return new Response(HTML_CONTENT, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-cache",
+          ...baseHeaders
+        }
+      });
+    }
+
+    // --- Serve static assets ---
+    const asset = matchAsset(pathname);
+    if (asset) {
+      return new Response(asset.body, {
+        status: 200,
+        headers: {
+          "Content-Type": asset.contentType,
+          "Cache-Control": "public, max-age=300",
+          ...baseHeaders
+        }
+      });
+    }
+
+    // --- 404 ---
+    return new Response("Not Found", {
+      status: 404,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        ...baseHeaders
+      }
+    });
+  }
+};
