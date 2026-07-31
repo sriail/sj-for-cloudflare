@@ -3,7 +3,6 @@
 
 // ========== Imports ==========
 import { connect } from 'cloudflare:sockets';
-import { INDEX_HTML } from './index.js';
 import { wispRates } from './rates.js';
 
 // ========== Wisp Protocol Constants ==========
@@ -425,24 +424,6 @@ export default {
       ctx.waitUntil(wisp.run().catch(e => console.error('WispServer:', e)));
 
       return new Response(null, { status: 101, webSocket: clientWs });
-    }
-
-    // --- Test page → test-rate (hard limit) ---
-    if (url.pathname === '/' || url.pathname === '/index.html') {
-      const r = limiter.checkHard('test-rate', ip);
-      if (!r.allowed) {
-        return new Response('Rate limit exceeded. Try again later.', {
-          status: 429,
-          headers: {
-            'Retry-After': String(Math.ceil((r.retryAfter || 60000) / 1000)),
-            'Content-Type': 'text/plain'
-          }
-        });
-      }
-
-      return new Response(INDEX_HTML, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      });
     }
 
     return new Response('Not Found', { status: 404 });
