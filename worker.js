@@ -369,10 +369,25 @@ const HTML_CONTENT = `<!DOCTYPE html>
 
       async function init() {
         try {
+          // Wait for the service worker to be active.
           await navigator.serviceWorker.ready;
+
+          // Wait for window load in case scripts haven't finished executing yet
+          if (document.readyState !== 'complete') {
+            await new Promise((resolve) => window.addEventListener('load', resolve, { once: true }));
+          }
+
           const serviceworker =
             navigator.serviceWorker.controller ??
             (await navigator.serviceWorker.ready).active;
+
+          // Safety checks to ensure scripts loaded properly
+          if (!window.$scramjetController || !window.$scramjetController.Controller) {
+            throw new Error("window.$scramjetController is missing. Ensure the controller.api.js file is correctly served and contains the real code.");
+          }
+          if (!window.$scramjet || !window.$scramjet.defaultConfig) {
+            throw new Error("window.$scramjet is missing. Ensure the scramjet.js file is correctly served and contains the real code.");
+          }
 
           const { Controller } = window.$scramjetController;
           const { defaultConfig } = window.$scramjet;
@@ -380,9 +395,15 @@ const HTML_CONTENT = `<!DOCTYPE html>
           let EpoxyTransportClass = null;
           if (typeof self.EpoxyTransport !== 'undefined') {
             EpoxyTransportClass = self.EpoxyTransport.default || self.EpoxyTransport;
+          } else {
+            throw new Error("self.EpoxyTransport is missing. Ensure the epoxy/index.js file is correctly served and contains the real code.");
           }
 
           const wispConfig = window.wispConfig;
+          if (!wispConfig) {
+            throw new Error("window.wispConfig is missing. Ensure the wisp-routes.js file is correctly served.");
+          }
+
           const sortedRoutes = [...wispConfig.wss_routes].sort((a, b) => a.priority - b.priority);
           let transport = null;
 
@@ -607,11 +628,11 @@ const ASSETS = {
     contentType: "application/javascript"
   },
   "/scramjet/scramjet.js": {
-    body: "// Replace with the real scramjet.js bundle. Exposes window.$scramjet.defaultConfig.",
+    body: "// Replace with the real scramjet.js bundle. Exposes window.\$scramjet.defaultConfig.",
     contentType: "application/javascript"
   },
   "/controller/controller.api.js": {
-    body: "// Replace with the real controller bundle. Exposes window.$scramjetController.Controller.",
+    body: "// Replace with the real controller bundle. Exposes window.\$scramjetController.Controller.",
     contentType: "application/javascript"
   },
   "/epoxy/index.js": {
@@ -638,8 +659,6 @@ const ASSETS = {
  */
 function matchAsset(pathname) {
   if (ASSETS[pathname]) return ASSETS[pathname];
-  // Bare path with no trailing slash → redirect to dir + "/index.js"?
-  // (Keep simple — only exact matches here.)
   return null;
 }
 
