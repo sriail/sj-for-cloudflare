@@ -33,10 +33,19 @@ export const close_reasons = {
 
 // ========== Helpers ==========
 function isWebSocketUpgrade(request) {
-  // Case-insensitive check; some clients send "WebSocket", "webSocket", etc.
+  // 1. Check the Upgrade header (case-insensitive)
   const upgrade = request.headers.get('Upgrade');
-  if (!upgrade) return false;
-  return upgrade.toLowerCase().split(',').map(s => s.trim()).includes('websocket');
+  if (upgrade && upgrade.toLowerCase().split(',').map(s => s.trim()).includes('websocket')) {
+    return true;
+  }
+  
+  // 2. Fallback: Some proxies/clients strip the Upgrade header, but the 
+  // Sec-WebSocket-Key header is strictly required in all WS handshakes.
+  if (request.headers.get('Sec-WebSocket-Key')) {
+    return true;
+  }
+  
+  return false;
 }
 
 // ========== ServerStream (TCP via cloudflare:sockets) ==========
@@ -474,7 +483,6 @@ function landingPage(request) {
     <p class="muted">Connect to the same URL you opened in your browser — the relay accepts WebSocket upgrades on any path.</p>
   </main>
   <script>
-    // Auto-copy on click
     const u = document.getElementById('u');
     u.style.cursor = 'pointer';
     u.title = 'Click to copy';
@@ -503,8 +511,6 @@ export default {
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 
     // --- WebSocket upgrade → main-rate (throttled) ---
-    // Case-insensitive so it works whether the client sends
-    // "websocket", "WebSocket", "Websocket", etc.
     if (isWebSocketUpgrade(request)) {
       const ok = await limiter.checkThrottle('main-rate', ip);
       if (!ok) {
@@ -522,8 +528,6 @@ export default {
     }
 
     // --- Regular HTTP visit to the main domain (browser, curl, etc.) ---
-    // Serve a small landing page that exposes the wss URL.
-    // Allow GET/HEAD only; everything else returns 405.
     const method = request.method.toUpperCase();
     if (method === 'GET' || method === 'HEAD') {
       return landingPage(request);
