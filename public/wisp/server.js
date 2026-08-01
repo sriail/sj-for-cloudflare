@@ -480,7 +480,6 @@ function landingPage(request) {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      // Strict cache control to prevent edge cache from serving HTML to WebSockets
       'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
       'Expires': '0'
@@ -495,13 +494,18 @@ export default {
 
     const url = new URL(request.url);
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-
-    // --- WebSocket upgrade detection ---
-    // Inline check ensures no false negatives, covering HTTP/1.1, HTTP/2, and HTTP/3 WS handshakes
-    const upgradeHeader = request.headers.get('Upgrade') || '';
-    const isWebSocket = upgradeHeader.toLowerCase() === 'websocket' || request.headers.get('Sec-WebSocket-Key') !== null;
-
-    if (isWebSocket) {
+    const headers = request.headers;
+    
+    // Robust WebSocket detection
+    const upgrade = headers.get('Upgrade') || '';
+    const isWsUpgrade = upgrade.toLowerCase().includes('websocket') || headers.get('Sec-WebSocket-Key') !== null || headers.get('Sec-WebSocket-Version') !== null;
+    
+    // Fallback for proxies/firewalls that strip the Upgrade header:
+    // Browsers send `Accept: text/html` for page navigations. WebSocket clients do not.
+    const accept = headers.get('Accept') || '';
+    const isBrowserNav = accept.includes('text/html');
+    
+    if (isWsUpgrade || (request.method === 'GET' && !isBrowserNav)) {
       const ok = await limiter.checkThrottle('main-rate', ip);
       if (!ok) {
         return new Response('Rate limit exceeded.', { status: 429 });
