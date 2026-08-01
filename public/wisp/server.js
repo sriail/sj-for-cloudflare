@@ -1,4 +1,3 @@
-// src/server.js
 'use strict';
 
 // ========== Imports ==========
@@ -32,9 +31,17 @@ export const close_reasons = {
   ClientError: 0x81
 };
 
+// ========== Helpers ==========
+function isWebSocketUpgrade(request) {
+  // Case-insensitive check; some clients send "WebSocket", "webSocket", etc.
+  const upgrade = request.headers.get('Upgrade');
+  if (!upgrade) return false;
+  return upgrade.toLowerCase().split(',').map(s => s.trim()).includes('websocket');
+}
+
 // ========== ServerStream (TCP via cloudflare:sockets) ==========
 export class ServerStream {
-  static buffer_size = 128; // Max packets to buffer
+  static buffer_size = 128;
 
   constructor(stream_id, client, hostname, port, stream_type) {
     this.stream_id = stream_id;
@@ -53,12 +60,10 @@ export class ServerStream {
       this.socket = connect({ hostname: this.hostname, port: this.port });
       this.writer = this.socket.writable.getWriter();
 
-      // Send initial CONTINUE with buffer size
       const buf = new ArrayBuffer(4);
       new DataView(buf).setUint32(0, ServerStream.buffer_size, true);
       this.client.send_packet(packet_types.CONTINUE, this.stream_id, buf);
 
-      // Begin reading from remote → forwarding to WS client
       this.readLoop();
     } catch (err) {
       console.error('ServerStream setup error:', err);
@@ -75,7 +80,7 @@ export class ServerStream {
         this.client.send_packet(packet_types.DATA, this.stream_id, value.buffer);
       }
     } catch {
-      // Socket read error — fall through to close
+      // fall through to close
     } finally {
       try { reader.releaseLock(); } catch {}
       await this.close(close_reasons.NetworkError);
@@ -139,13 +144,13 @@ export class FetchStream {
     const raw = this._combined();
     const text = new TextDecoder().decode(raw);
     const hdrEnd = text.indexOf('\r\n\r\n');
-    if (hdrEnd === -1) return; // headers not complete yet
+    if (hdrEnd === -1) return;
 
     const hdrText = text.slice(0, hdrEnd);
     const clMatch = hdrText.match(/content-length:\s*(\d+)/i);
     const cl = clMatch ? parseInt(clMatch[1], 10) : 0;
     const bodyStart = hdrEnd + 4;
-    if (raw.length - bodyStart < cl) return; // body not fully received
+    if (raw.length - bodyStart < cl) return;
 
     this.fetchStarted = true;
     this.chunks = [];
@@ -180,14 +185,12 @@ export class FetchStream {
     try {
       const resp = await fetch(url, { method: m, headers: h, body });
 
-      // Build HTTP/1.1 response text
       let respText = `HTTP/1.1 ${resp.status} ${resp.statusText}\r\n`;
       resp.headers.forEach((v, k) => { respText += `${k}: ${v}\r\n`; });
       respText += '\r\n';
       const hb = new TextEncoder().encode(respText);
       this.client.send_packet(packet_types.DATA, this.stream_id, hb.buffer);
 
-      // Stream response body
       if (resp.body) {
         const reader = resp.body.getReader();
         while (true) {
@@ -217,8 +220,8 @@ export class FetchStream {
 // ========== Rate Limiter ==========
 class RateLimiter {
   constructor() {
-    this.hard = new Map();       // time-windowed buckets
-    this.throttle = new Map();   // throttle buckets (time:0 mode)
+    this.hard = new Map();
+    this.throttle = new Map();
     this.lastClean = Date.now();
   }
 
@@ -283,7 +286,7 @@ class RateLimiter {
 
   maybeClean() {
     const now = Date.now();
-    if (now - this.lastClean < 300000) return; // 5 min
+    if (now - this.lastClean < 300000) return;
     this.lastClean = now;
     for (const [k, b] of this.hard) {
       if (now > b.reset) this.hard.delete(k);
@@ -308,10 +311,9 @@ export class WispServer {
       this.ws.addEventListener('message', (event) => this.onMessage(event));
       this.ws.addEventListener('close', () => { this.cleanup(); resolve(); });
       this.ws.addEventListener('error', () => { this.cleanup(); resolve(); });
-      
-      // Send initial CONTINUE on stream 0 (handshake)
+
       const payload = new ArrayBuffer(4);
-      new DataView(payload).setUint32(0, 128, true); // Initial global buffer
+      new DataView(payload).setUint32(0, 128, true);
       this.send_packet(packet_types.CONTINUE, 0, payload);
     });
   }
@@ -322,14 +324,14 @@ export class WispServer {
     const buf = new ArrayBuffer(5 + payload_len);
     const view = new DataView(buf);
     const u8 = new Uint8Array(buf);
-    
+
     view.setUint8(0, type);
     view.setUint32(1, stream_id, true);
-    
+
     if (payload_len > 0) {
       u8.set(new Uint8Array(payload_buffer), 5);
     }
-    
+
     this.ws.send(buf);
   }
 
@@ -337,10 +339,10 @@ export class WispServer {
     let buf;
     if (event.data instanceof ArrayBuffer) buf = event.data;
     else if (event.data instanceof Blob) buf = await event.data.arrayBuffer();
-    else return; 
+    else return;
 
     if (buf.byteLength < 5) return;
-    
+
     const view = new DataView(buf);
     const type = view.getUint8(0);
     const stream_id = view.getUint32(1, true);
@@ -350,18 +352,18 @@ export class WispServer {
       if (type === packet_types.CONNECT) {
         if (stream_id === 0 || this.streams.has(stream_id)) return;
         if (payload.length < 3) return;
-        
+
         const stream_type = payload[0];
-        const port = view.getUint16(6, true); 
+        const port = view.getUint16(6, true);
         const hostname = new TextDecoder().decode(payload.slice(3)).trim();
-        
+
         let stream;
         if (port === 80 || port === 443 || port === 8080 || port === 8443) {
           stream = new FetchStream(stream_id, this, hostname, port, stream_type);
         } else {
           stream = new ServerStream(stream_id, this, hostname, port, stream_type);
         }
-        
+
         this.streams.set(stream_id, stream);
         stream.setup().catch(err => console.error("Stream setup failed:", err));
         return;
@@ -373,8 +375,7 @@ export class WispServer {
       if (type === packet_types.DATA) {
         stream.recv_count++;
         stream.put_data(payload);
-        
-        // Send CONTINUE packet if we've received enough data to replenish buffer
+
         if (stream.recv_count >= stream.constructor.buffer_size) {
           const p = new ArrayBuffer(4);
           new DataView(p).setUint32(0, stream.constructor.buffer_size, true);
@@ -402,6 +403,97 @@ export class WispServer {
   }
 }
 
+// ========== Landing page (for browser visits to the main domain) ==========
+function landingPage(request) {
+  const url = new URL(request.url);
+  const wsProto = url.protocol === 'https:' ? 'wss' : 'ws';
+  const wssUrl = `${wsProto}://${url.host}/`;
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wisp Relay</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: #0b0d10;
+    color: #e6e6e6;
+  }
+  .card {
+    max-width: 560px;
+    width: 100%;
+    background: #13161b;
+    border: 1px solid #232730;
+    border-radius: 14px;
+    padding: 2rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,.45);
+  }
+  h1 { margin: 0 0 .35rem; font-size: 1.4rem; }
+  p  { margin: .35rem 0; line-height: 1.55; color: #b6bcc7; }
+  code, .url {
+    display: block;
+    margin: .8rem 0;
+    padding: .8rem 1rem;
+    background: #0a0c0f;
+    border: 1px solid #232730;
+    border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    word-break: break-all;
+    color: #7fd1ff;
+    user-select: all;
+  }
+  .badge {
+    display: inline-block;
+    font-size: .72rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    background: #1b2330;
+    color: #8aa0bd;
+    margin-bottom: 1rem;
+  }
+  .muted { color: #6b7280; font-size: .85rem; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <span class="badge">Online</span>
+    <h1>Wisp Relay</h1>
+    <p>This endpoint serves a Wisp-protocol relay over WebSocket. Connect your Wisp client to the URL below.</p>
+    <span class="url" id="u">${wssUrl}</span>
+    <p class="muted">Connect to the same URL you opened in your browser — the relay accepts WebSocket upgrades on any path.</p>
+  </main>
+  <script>
+    // Auto-copy on click
+    const u = document.getElementById('u');
+    u.style.cursor = 'pointer';
+    u.title = 'Click to copy';
+    u.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(u.textContent); } catch {}
+    });
+  </script>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store'
+    }
+  });
+}
+
 // ========== Cloudflare Worker Entry Point ==========
 export default {
   async fetch(request, env, ctx) {
@@ -411,13 +503,16 @@ export default {
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 
     // --- WebSocket upgrade → main-rate (throttled) ---
-    if (request.headers.get('Upgrade') === 'websocket') {
+    // Case-insensitive so it works whether the client sends
+    // "websocket", "WebSocket", "Websocket", etc.
+    if (isWebSocketUpgrade(request)) {
       const ok = await limiter.checkThrottle('main-rate', ip);
       if (!ok) {
         return new Response('Rate limit exceeded.', { status: 429 });
       }
 
-      const [clientWs, serverWs] = Object.values(new WebSocketPair());
+      const pair = new WebSocketPair();
+      const [clientWs, serverWs] = Object.values(pair);
       serverWs.accept();
 
       const wisp = new WispServer(serverWs);
@@ -426,6 +521,17 @@ export default {
       return new Response(null, { status: 101, webSocket: clientWs });
     }
 
-    return new Response('Not Found', { status: 404 });
+    // --- Regular HTTP visit to the main domain (browser, curl, etc.) ---
+    // Serve a small landing page that exposes the wss URL.
+    // Allow GET/HEAD only; everything else returns 405.
+    const method = request.method.toUpperCase();
+    if (method === 'GET' || method === 'HEAD') {
+      return landingPage(request);
+    }
+
+    return new Response('Method Not Allowed', {
+      status: 405,
+      headers: { 'Allow': 'GET, HEAD' }
+    });
   }
 };
