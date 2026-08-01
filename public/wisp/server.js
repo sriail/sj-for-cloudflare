@@ -31,23 +31,6 @@ export const close_reasons = {
   ClientError: 0x81
 };
 
-// ========== Helpers ==========
-function isWebSocketUpgrade(request) {
-  // 1. Check the Upgrade header (case-insensitive)
-  const upgrade = request.headers.get('Upgrade');
-  if (upgrade && upgrade.toLowerCase().split(',').map(s => s.trim()).includes('websocket')) {
-    return true;
-  }
-  
-  // 2. Fallback: Some proxies/clients strip the Upgrade header, but the 
-  // Sec-WebSocket-Key header is strictly required in all WS handshakes.
-  if (request.headers.get('Sec-WebSocket-Key')) {
-    return true;
-  }
-  
-  return false;
-}
-
 // ========== ServerStream (TCP via cloudflare:sockets) ==========
 export class ServerStream {
   static buffer_size = 128;
@@ -497,7 +480,10 @@ function landingPage(request) {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store'
+      // Strict cache control to prevent edge cache from serving HTML to WebSockets
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     }
   });
 }
@@ -510,8 +496,12 @@ export default {
     const url = new URL(request.url);
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 
-    // --- WebSocket upgrade → main-rate (throttled) ---
-    if (isWebSocketUpgrade(request)) {
+    // --- WebSocket upgrade detection ---
+    // Inline check ensures no false negatives, covering HTTP/1.1, HTTP/2, and HTTP/3 WS handshakes
+    const upgradeHeader = request.headers.get('Upgrade') || '';
+    const isWebSocket = upgradeHeader.toLowerCase() === 'websocket' || request.headers.get('Sec-WebSocket-Key') !== null;
+
+    if (isWebSocket) {
       const ok = await limiter.checkThrottle('main-rate', ip);
       if (!ok) {
         return new Response('Rate limit exceeded.', { status: 429 });
