@@ -3,7 +3,6 @@
  * 
  * Serves the Scramjet proxy UI and associated static assets.
  */
-
 const HTML_CONTENT = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -11,10 +10,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Scramjet</title>
     <link rel="manifest" href="/manifest.json">
-    <script type="module">
-    import { wispConfig } from '/wisp/wisp-routes.js';
-    window.wispConfig = wispConfig;
-    </script>
     <style>
       :root,
       [data-theme="light"] {
@@ -369,12 +364,26 @@ const HTML_CONTENT = `<!DOCTYPE html>
 
       async function init() {
         try {
-          // Wait for the service worker to be active.
-          await navigator.serviceWorker.ready;
+          // Wait for the service worker to be active, with a timeout to prevent hanging forever
+          const swReady = navigator.serviceWorker.ready;
+          const timeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Service worker failed to become ready after 5 seconds")), 5000)
+          );
+          await Promise.race([swReady, timeout]);
 
-          // Wait for window load in case scripts haven't finished executing yet
+          // Wait for window load just in case
           if (document.readyState !== 'complete') {
             await new Promise((resolve) => window.addEventListener('load', resolve, { once: true }));
+          }
+
+          // Dynamically import wispConfig to avoid race conditions with deferred module scripts
+          if (!window.wispConfig) {
+            try {
+              const wispModule = await import('/wisp/wisp-routes.js');
+              window.wispConfig = wispModule.wispConfig;
+            } catch (e) {
+              console.warn("Could not dynamically import wisp-routes.js", e);
+            }
           }
 
           const serviceworker =
@@ -459,6 +468,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
 
           await scramjet.wait();
           frame = scramjet.createFrame(iframe);
+          console.log("Scramjet frame initialized successfully.");
         } catch (e) {
           console.error("Failed to initialize Scramjet:", e);
         }
@@ -597,7 +607,11 @@ const HTML_CONTENT = `<!DOCTYPE html>
       document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js").then(init);
+        navigator.serviceWorker.register("/sw.js")
+          .then(init)
+          .catch((err) => console.error("Service Worker registration failed:", err));
+      } else {
+        console.error("Service workers not supported in this browser.");
       }
     </script>
   </body>
